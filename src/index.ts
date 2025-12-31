@@ -2,6 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import * as http from "node:http";
 import * as tools from "./tools";
 import { getVersion } from "./utils";
@@ -40,13 +41,23 @@ const startHttpServer = async () => {
 	const host = process.env.HOST || "0.0.0.0";
 
 	// Map to store SSE transports for each session
-	const transports = new Map<string, SSEServerTransport>();
+	const sseTransports = new Map<string, SSEServerTransport>();
+	
+	// Streamable HTTP transport for stateless POST requests
+	const httpTransport = new StreamableHTTPServerTransport({
+		sessionIdGenerator: undefined, // Stateless mode
+	});
+	
+	// Create and connect an MCP server for HTTP transport
+	const httpMcpServer = createServer();
+	await httpMcpServer.connect(httpTransport);
 
 	const httpServer = http.createServer(async (req, res) => {
 		// Set CORS headers
 		res.setHeader("Access-Control-Allow-Origin", "*");
 		res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE");
-		res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization");
+		res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, Mcp-Session-Id");
+		res.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id");
 
 		// Handle preflight
 		if (req.method === "OPTIONS") {
@@ -59,13 +70,15 @@ const startHttpServer = async () => {
 		const pathname = url.pathname;
 
 		// Health check endpoint
-		if (pathname === "/health" || pathname === "/") {
+		if ((pathname === "/health" || pathname === "/") && req.method === "GET") {
 			res.writeHead(200, { "Content-Type": "application/json" });
 			res.end(JSON.stringify({
 				status: "ok",
 				name: "railway-mcp-server",
 				version: getVersion(),
+				transport: "streamable-http",
 				endpoints: {
+					mcp: "/mcp",
 					sse: "/mcp/sse",
 					messages: "/mcp/messages"
 				}
@@ -73,7 +86,37 @@ const startHttpServer = async () => {
 			return;
 		}
 
-		// SSE endpoint - establishes SSE connection
+		// Main MCP endpoint - handles POST requests for Streamable HTTP transport
+		if (pathname === "/mcp" && req.method === "POST") {
+			console.log("MCP POST request received");
+			try {
+				await httpTransport.handleRequest(req, res);
+			} catch (error) {
+				console.error("Error handling MCP request:", error);
+				if (!res.headersSent) {
+					res.writeHead(500, { "Content-Type": "application/json" });
+					res.end(JSON.stringify({ error: "Internal server error" }));
+				}
+			}
+			return;
+		}
+
+		// Also handle DELETE for session cleanup (required by Streamable HTTP spec)
+		if (pathname === "/mcp" && req.method === "DELETE") {
+			console.log("MCP DELETE request received");
+			try {
+				await httpTransport.handleRequest(req, res);
+			} catch (error) {
+				console.error("Error handling MCP DELETE:", error);
+				if (!res.headersSent) {
+					res.writeHead(500, { "Content-Type": "application/json" });
+					res.end(JSON.stringify({ error: "Internal server error" }));
+				}
+			}
+			return;
+		}
+
+		// SSE endpoint - establishes SSE connection (for clients that prefer SSE)
 		if (pathname === "/mcp/sse" && req.method === "GET") {
 			console.log("SSE connection request received");
 			
@@ -82,14 +125,14 @@ const startHttpServer = async () => {
 			
 			// Store the transport with a session ID
 			const sessionId = transport.sessionId;
-			transports.set(sessionId, transport);
+			sseTransports.set(sessionId, transport);
 			
 			console.log(`SSE connection established, session: ${sessionId}`);
 
 			// Clean up on close
 			res.on("close", () => {
 				console.log(`SSE connection closed, session: ${sessionId}`);
-				transports.delete(sessionId);
+				sseTransports.delete(sessionId);
 			});
 
 			await server.connect(transport);
@@ -106,7 +149,7 @@ const startHttpServer = async () => {
 				return;
 			}
 
-			const transport = transports.get(sessionId);
+			const transport = sseTransports.get(sessionId);
 			if (!transport) {
 				res.writeHead(404, { "Content-Type": "application/json" });
 				res.end(JSON.stringify({ error: "Session not found" }));
@@ -140,8 +183,8 @@ const startHttpServer = async () => {
 
 	httpServer.listen(port, host, () => {
 		console.log(`Railway MCP Server running on http://${host}:${port}`);
+		console.log(`MCP endpoint (Streamable HTTP): http://${host}:${port}/mcp`);
 		console.log(`SSE endpoint: http://${host}:${port}/mcp/sse`);
-		console.log(`Messages endpoint: http://${host}:${port}/mcp/messages`);
 	});
 };
 
@@ -152,11 +195,11 @@ const startStdioServer = async () => {
 };
 
 const main = async () => {
-	// Check if we should use SSE (for remote deployment) or stdio (for local)
-	const useSSE = process.env.USE_SSE === "true" || process.env.PORT !== undefined;
+	// Check if we should use HTTP (for remote deployment) or stdio (for local)
+	const useHttp = process.env.USE_HTTP === "true" || process.env.PORT !== undefined;
 	
-	if (useSSE) {
-		console.log("Starting Railway MCP Server with SSE transport...");
+	if (useHttp) {
+		console.log("Starting Railway MCP Server with HTTP transport...");
 		await startHttpServer();
 	} else {
 		console.log("Starting Railway MCP Server with stdio transport...");
