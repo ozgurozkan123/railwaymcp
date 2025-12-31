@@ -2,6 +2,8 @@ export {
   checkRailwayCliStatus,
   runRailwayCommand,
   runRailwayJsonCommand,
+  setRequestTokens,
+  getRequestTokens,
 } from "./core";
 export { deployRailwayProject, listDeployments } from "./deployment";
 export { generateRailwayDomain } from "./domain";
