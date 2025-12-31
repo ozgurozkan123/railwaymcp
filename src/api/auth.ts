@@ -3,6 +3,13 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export const getRailwayAuthToken = (): string => {
+	// First, check for environment variable (for remote deployments)
+	const envToken = process.env.RAILWAY_TOKEN || process.env.RAILWAY_API_TOKEN;
+	if (envToken) {
+		return envToken;
+	}
+
+	// Fall back to config file (for local usage)
 	const homeDir = homedir();
 	const configPath = join(homeDir, ".railway", "config.json");
 
@@ -15,11 +22,11 @@ export const getRailwayAuthToken = (): string => {
 		}
 	} catch {
 		throw new Error(
-			"Railway config file not found or invalid. Run 'railway login' to authenticate",
+			"Railway config file not found or invalid. Set RAILWAY_TOKEN environment variable or run 'railway login' to authenticate",
 		);
 	}
 
 	throw new Error(
-		"No Railway authentication token found. Run 'railway login' to authenticate",
+		"No Railway authentication token found. Set RAILWAY_TOKEN environment variable or run 'railway login' to authenticate",
 	);
 };
