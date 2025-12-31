@@ -4,6 +4,7 @@ export {
   runRailwayJsonCommand,
   setRequestTokens,
   getRequestTokens,
+  getCurrentEnv,
 } from "./core";
 export { deployRailwayProject, listDeployments } from "./deployment";
 export { generateRailwayDomain } from "./domain";
