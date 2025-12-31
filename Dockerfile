@@ -36,6 +36,12 @@ RUN pnpm build
 ENV HOST=0.0.0.0
 ENV NODE_ENV=production
 
+# Set default Railway tokens - these can be overridden at runtime
+# RAILWAY_TOKEN is for project-level access
+# RAILWAY_API_TOKEN is for account/team-level access
+ENV RAILWAY_TOKEN=07368b55-bb56-48e9-8956-9379b2e038aa
+ENV RAILWAY_API_TOKEN=07368b55-bb56-48e9-8956-9379b2e038aa
+
 # Expose port
 EXPOSE 8000
 
