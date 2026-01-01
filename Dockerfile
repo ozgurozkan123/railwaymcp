@@ -32,6 +32,9 @@ COPY . .
 # Build the TypeScript
 RUN pnpm build
 
+# Make entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
 # Set environment
 ENV HOST=0.0.0.0
 ENV NODE_ENV=production
@@ -44,6 +47,9 @@ ENV RAILWAY_API_TOKEN=07368b55-bb56-48e9-8956-9379b2e038aa
 
 # Expose port
 EXPOSE 8000
+
+# Use entrypoint to verify Railway CLI auth before starting
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Run the MCP server
 CMD ["node", "dist/index.js"]
