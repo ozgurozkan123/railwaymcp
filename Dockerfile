@@ -38,7 +38,7 @@ RUN chmod +x /app/entrypoint.sh
 # Set environment
 ENV HOST=0.0.0.0
 ENV NODE_ENV=production
-
+ENV RAILWAY_API_TOKEN=43bcaad8-00dc-423d-9c12-856ec461a089
 # RAILWAY_TOKEN and RAILWAY_API_TOKEN should be set via Render environment variables
 # DO NOT hardcode tokens in Dockerfile - set them in the deployment platform
 
