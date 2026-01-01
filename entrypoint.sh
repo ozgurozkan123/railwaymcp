@@ -6,7 +6,9 @@ echo "Checking Railway CLI..."
 
 # Verify Railway CLI is installed
 railway --version
-
+export RAILWAY_API_TOKEN=43bcaad8-00dc-423d-9c12-856ec461a089
+unset RAILWAY_TOKEN
+railway login --browserless
 # Check if RAILWAY_TOKEN or RAILWAY_API_TOKEN is set
 if [ -n "$RAILWAY_TOKEN" ] || [ -n "$RAILWAY_API_TOKEN" ]; then
     echo "Railway token detected, verifying authentication..."
