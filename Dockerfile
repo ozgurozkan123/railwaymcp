@@ -39,11 +39,8 @@ RUN chmod +x /app/entrypoint.sh
 ENV HOST=0.0.0.0
 ENV NODE_ENV=production
 
-# Set default Railway tokens - these can be overridden at runtime
-# RAILWAY_TOKEN is for project-level access
-# RAILWAY_API_TOKEN is for account/team-level access
-ENV RAILWAY_TOKEN=07368b55-bb56-48e9-8956-9379b2e038aa
-ENV RAILWAY_API_TOKEN=07368b55-bb56-48e9-8956-9379b2e038aa
+# RAILWAY_TOKEN and RAILWAY_API_TOKEN should be set via Render environment variables
+# DO NOT hardcode tokens in Dockerfile - set them in the deployment platform
 
 # Expose port
 EXPOSE 8000
